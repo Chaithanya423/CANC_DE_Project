@@ -1824,59 +1824,23 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET_Z1')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "LS_EDGE_ADLS_Z1",
-					"type": "LinkedServiceReference",
-					"parameters": {
-						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
-					}
-				},
-				"parameters": {
-					"url": {
-						"type": "string",
-						"defaultValue": "https://dcct01kbkzh75jiawSu.dfs.core.windows.net/"
-					},
-					"fileName": {
-						"type": "string"
-					},
-					"filePath": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": {
-							"value": "@dataset().fileName",
-							"type": "Expression"
-						},
-						"fileSystem": {
-							"value": "@dataset().filePath",
-							"type": "Expression"
-						}
-					},
-					"compressionCodec": "snappy"
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/DS_EDGE_META_DATA_RW')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "LS_EDGE_META_DATA_RW",
-					"type": "LinkedServiceReference"
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"env": {
+							"value": "@dataset().env",
+							"type": "Expression"
+						},
+						"keyVault": {
+							"value": "@dataset().keyVault",
+							"type": "Expression"
+						}
+					}
 				},
 				"parameters": {
 					"env": {
@@ -2435,6 +2399,78 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET_Z1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_EDGE_ADLS_Z1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
+					}
+				},
+				"parameters": {
+					"url": {
+						"type": "string",
+						"defaultValue": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"filePath": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().filePath",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_EDGE_ADLS_Z1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
+			]
 		}
 	]
 }

@@ -725,59 +725,23 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET_Z1')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "LS_EDGE_ADLS_Z1",
-					"type": "LinkedServiceReference",
-					"parameters": {
-						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
-					}
-				},
-				"parameters": {
-					"url": {
-						"type": "string",
-						"defaultValue": "https://dcct01kbkzh75jiawSu.dfs.core.windows.net/"
-					},
-					"fileName": {
-						"type": "string"
-					},
-					"filePath": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": {
-							"value": "@dataset().fileName",
-							"type": "Expression"
-						},
-						"fileSystem": {
-							"value": "@dataset().filePath",
-							"type": "Expression"
-						}
-					},
-					"compressionCodec": "snappy"
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/DS_EDGE_META_DATA_RW')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
 					"referenceName": "LS_EDGE_META_DATA_RW",
-					"type": "LinkedServiceReference"
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"env": {
+							"value": "@dataset().env",
+							"type": "Expression"
+						},
+						"keyVault": {
+							"value": "@dataset().keyVault",
+							"type": "Expression"
+						}
+					}
 				},
 				"parameters": {
 					"env": {
@@ -1021,6 +985,78 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHosted-141945')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET_Z1')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_EDGE_ADLS_Z1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
+					}
+				},
+				"parameters": {
+					"url": {
+						"type": "string",
+						"defaultValue": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"filePath": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().filePath",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_EDGE_ADLS_PARQUET')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_EDGE_ADLS_Z1",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_EDGE_ADLS_Z1')]"
 			]
 		},
 		{
@@ -1661,101 +1697,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_EDGE_META_DATA_RW')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SQL_Server')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "source_connection_info",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "1.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": {
-									"value": "select * from INGEST.RDBMS_FEED_CONNECTION_INFO where FEED_CONNECTION_INFO_KEY = '@{pipeline().parameters.sourceID}' and active_ind = 1",
-									"type": "Expression"
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "DS_GenericSQLServer",
-								"type": "DatasetReference",
-								"parameters": {
-									"server": "dummy",
-									"database": "dummy",
-									"username": "dummy",
-									"password": "dummy",
-									"tablename": "dummy"
-								}
-							}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"parameters": {
-					"entity_coordinate": {
-						"type": "string"
-					},
-					"sourceID": {
-						"type": "string"
-					},
-					"targetID": {
-						"type": "string"
-					},
-					"tableName": {
-						"type": "string"
-					},
-					"degree_of_copy_parallelism": {
-						"type": "int"
-					},
-					"filePath": {
-						"type": "string"
-					},
-					"ingestionID": {
-						"type": "string"
-					},
-					"partition_field": {
-						"type": "string"
-					},
-					"env": {
-						"type": "string"
-					},
-					"parentID": {
-						"type": "string"
-					},
-					"last_value": {
-						"type": "string"
-					}
-				},
-				"variables": {
-					"rowsCopied": {
-						"type": "Integer"
-					}
-				},
-				"folder": {
-					"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
-				},
-				"annotations": [],
-				"lastPublishTime": "2026-06-24T20:05:20Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_GenericSQLServer')]"
 			]
 		}
 	]
