@@ -1,0 +1,26 @@
+{
+	"edge_env": {
+		"type": "string",
+		"value": "sit6"
+	},
+	"nodeLevelKeyVault": {
+		"type": "string",
+		"value": "d132947keyvault"
+	},
+	"databricksWorkspace": {
+		"type": "string",
+		"value": "https://dummy.azuredatabricks.net/"
+	},
+	"adlsStorageAcctUrl": {
+		"type": "string",
+		"value": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+	},
+	"eventLoggingHttpUrl": {
+		"type": "string",
+		"value": "api/status/"
+	},
+	"adlsStorageQueueUrl": {
+		"type": "string",
+		"value": "queue"
+	}
+}

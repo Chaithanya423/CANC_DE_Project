@@ -1,0 +1,681 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "ddfv2-canc-132947-dev-02"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_GenericDb2')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_GenericDb2",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"rdbmsSourceSecret": "edge-sc-c-m1020-1912"
+					}
+				},
+				"parameters": {
+					"rdbmsSourceSecret": {
+						"type": "string",
+						"defaultValue": "edge-sc-c-m1020-1912"
+					},
+					"keyVault": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Db2Table",
+				"schema": [],
+				"typeProperties": {
+					"schema": "ADGCAP1",
+					"table": "CS_REASON"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_GenericPSQL')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_GenericPSQL",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"secret": {
+						"type": "string"
+					},
+					"host": {
+						"type": "string"
+					},
+					"port": {
+						"type": "string"
+					},
+					"username": {
+						"type": "string"
+					},
+					"database": {
+						"type": "string",
+						"defaultValue": "postgresql-canc-edhoper-34001-dev-7taleugbxhski"
+					},
+					"validate_server_certificate": {
+						"type": "string",
+						"defaultValue": "N"
+					},
+					"keyvault_name": {
+						"type": "string"
+					},
+					"tablename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzurePostgreSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().tablename",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DB2_Server')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "move_source_to_landing_zone",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "source_connection_info",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "2.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "Db2Source",
+								"query": {
+									"value": "@activity('source_connection_info').output.resultSets[0].rows[0].result",
+									"type": "Expression"
+								}
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"parallelCopies": {
+								"value": "@pipeline().parameters.degree_of_copy_parallelism",
+								"type": "Expression"
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_GenericDb2",
+								"type": "DatasetReference",
+								"parameters": {
+									"rdbmsSourceSecret": "edge-sc-c-m1020-1912",
+									"keyVault": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_EDGE_ADLS_PARQUET_Z1",
+								"type": "DatasetReference",
+								"parameters": {
+									"url": {
+										"value": "@activity('source_connection_info').output.firstRow.host",
+										"type": "Expression"
+									},
+									"fileName": {
+										"value": "@if(equals(1, 2), null, null)",
+										"type": "Expression"
+									},
+									"filePath": {
+										"value": "@pipeline().parameters.filePath",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "source_connection_info",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "select * from INGEST.RDBMS_FEED_CONNECTION_INFO where FEED_CONNECTION_INFO_KEY = '@{pipeline().parameters.sourceID}' and active_ind = 1",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_GenericSQLServer",
+								"type": "DatasetReference",
+								"parameters": {
+									"server": "dummy",
+									"database": "dummy",
+									"username": "dummy",
+									"password": "dummy",
+									"tablename": "dummy"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"entity_coordinate": {
+						"type": "string"
+					},
+					"sourceID": {
+						"type": "string"
+					},
+					"targetID": {
+						"type": "string",
+						"defaultValue": "3"
+					},
+					"tableName": {
+						"type": "string"
+					},
+					"degree_of_copy_parallelism": {
+						"type": "int"
+					},
+					"filePath": {
+						"type": "string"
+					},
+					"ingestionID": {
+						"type": "string"
+					},
+					"partition_field": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					},
+					"parentID": {
+						"type": "string"
+					},
+					"last_value": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"rowsCopied": {
+						"type": "Integer"
+					}
+				},
+				"folder": {
+					"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-06-24T20:05:20Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_GenericDb2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PostgreSQL_Server')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "source_connection_info",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlMISource",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_EDGE_META_DATA_RW",
+								"type": "DatasetReference",
+								"parameters": {
+									"env": "sit6",
+									"keyVault": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									},
+									"tablename": "stg_appl_info"
+								}
+							}
+						}
+					},
+					{
+						"name": "move_source_to_landing_zone",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "source_connection_info",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "2.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzurePostgreSqlSource",
+								"query": {
+									"value": "@activity('source_connection_info').output",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"queryTimeout": "00:10:00",
+								"convertDecimalToInteger": false
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"parallelCopies": {
+								"value": "@pipeline().parameters.degree_of_copy_parallelism",
+								"type": "Expression"
+							},
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_GenericPSQL",
+								"type": "DatasetReference",
+								"parameters": {
+									"secret": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									},
+									"host": {
+										"value": "@activity('source_connection_info').output.firstRow.host",
+										"type": "Expression"
+									},
+									"port": {
+										"value": "@activity('source_connection_info').output.firstRow.port",
+										"type": "Expression"
+									},
+									"username": {
+										"value": "@activity('source_connection_info').output.firstRow.username",
+										"type": "Expression"
+									},
+									"database": "postgresql-canc-edhoper-34001-dev-7taleugbxhski",
+									"validate_server_certificate": "N",
+									"keyvault_name": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									},
+									"tablename": {
+										"value": "@pipeline().parameters.tableName",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_EDGE_ADLS_PARQUET_Z1",
+								"type": "DatasetReference",
+								"parameters": {
+									"url": {
+										"value": "@activity('source_connection_info').output.firstRow.host",
+										"type": "Expression"
+									},
+									"fileName": {
+										"value": "@if(equals(1, 2), null, null)",
+										"type": "Expression"
+									},
+									"filePath": {
+										"value": "@pipeline().parameters.filePath",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"entity_coordinate": {
+						"type": "string"
+					},
+					"sourceID": {
+						"type": "string"
+					},
+					"targetID": {
+						"type": "string"
+					},
+					"tableName": {
+						"type": "string"
+					},
+					"degree_of_copy_parallelism": {
+						"type": "string"
+					},
+					"filePath": {
+						"type": "string"
+					},
+					"ingestionID": {
+						"type": "string"
+					},
+					"partition_field": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					},
+					"parentID": {
+						"type": "string"
+					},
+					"last_value": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-06-24T20:05:20Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_GenericPSQL')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RDBMS_Ingestion_Batch_Layer')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Find entity_coordinate based on the provided group_id ordered by the execution order in group.",
+				"activities": [
+					{
+						"name": "Query Ingestion Platform",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.01:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlMISource",
+								"sqlReaderQuery": {
+									"value": "select Platform, IIF(ISJSON(additional_info) = 1, COALESCE(JSON_QUERY(additional_info, '$.cluster_init_scripts'), '[]'), '[]') as cluster_init_scripts\nfrom ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}'\nunion select 'ADF' as platform, '[]' as cluster_init_scripts\nwhere not exists (select 1 from ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}')",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_EDGE_META_DATA_RW",
+								"type": "DatasetReference",
+								"parameters": {
+									"env": {
+										"value": "@pipeline().parameters.env",
+										"type": "Expression"
+									},
+									"keyVault": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					},
+					{
+						"name": "Platform Router",
+						"description": "Choose the option between ADF and Databricks to do the ingestion",
+						"type": "Switch",
+						"dependsOn": [
+							{
+								"activity": "Query Ingestion Platform",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"on": {
+								"value": "@if(equals(variables('platform'), 'DBR'), 'DBR', 'ADF')",
+								"type": "Expression"
+							},
+							"cases": [
+								{
+									"value": "DBR",
+									"activities": [
+										{
+											"name": "RDBMS DBR Ingestion",
+											"type": "ExecutePipeline",
+											"dependsOn": [],
+											"policy": {
+												"secureInput": false
+											},
+											"userProperties": [],
+											"typeProperties": {
+												"pipeline": {
+													"referenceName": "RDBMS_DBR_Ingestion",
+													"type": "PipelineReference"
+												},
+												"waitOnCompletion": true,
+												"parameters": {
+													"group_id": {
+														"value": "@pipeline().parameters.group_id",
+														"type": "Expression"
+													},
+													"env": {
+														"value": "@pipeline().parameters.env",
+														"type": "Expression"
+													},
+													"dupSkip": {
+														"value": "@pipeline().parameters.dupSkip",
+														"type": "Expression"
+													},
+													"debugMode": {
+														"value": "@pipeline().parameters.debugMode",
+														"type": "Expression"
+													},
+													"callBackId": {
+														"value": "@pipeline().parameters.callBackId",
+														"type": "Expression"
+													},
+													"callBackUrl": {
+														"value": "@pipeline().parameters.callBackUrl",
+														"type": "Expression"
+													},
+													"clusterInitScripts": {
+														"value": "@json(replace(activity('Query Ingestion Platform').output.value[0].cluster_init_scripts, concat(pipeline().parameters.env), 'type'))",
+														"type": "Expression"
+													}
+												}
+											}
+										}
+									]
+								},
+								{
+									"value": "ADF",
+									"activities": [
+										{
+											"name": "RDBMS ADF Ingestion",
+											"type": "ExecutePipeline",
+											"dependsOn": [],
+											"policy": {
+												"secureInput": false
+											},
+											"userProperties": [],
+											"typeProperties": {
+												"pipeline": {
+													"referenceName": "RDBMS_ADF_Ingestion",
+													"type": "PipelineReference"
+												},
+												"waitOnCompletion": true,
+												"parameters": {
+													"group_id": {
+														"value": "@pipeline().parameters.group_id",
+														"type": "Expression"
+													},
+													"env": {
+														"value": "@pipeline().parameters.env",
+														"type": "Expression"
+													}
+												}
+											}
+										}
+									]
+								}
+							],
+							"defaultActivities": [
+								{
+									"name": "SendOrchFailed",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "SendOrchFailedMsg",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"groupLvlFailure": true,
+											"callBackUrl": {
+												"value": "@pipeline().parameters.callBackUrl",
+												"type": "Expression"
+											},
+											"callBackId": {
+												"value": "@pipeline().parameters.callBackId",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"group_id": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					},
+					"dupSkip": {
+						"type": "bool",
+						"defaultValue": true
+					},
+					"callBackUrl": {
+						"type": "string"
+					},
+					"callBackId": {
+						"type": "string"
+					},
+					"debugMode": {
+						"type": "bool"
+					},
+					"clusterInitScripts": {
+						"type": "Array"
+					}
+				},
+				"variables": {
+					"platform": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "RDBMS_Ingestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-06-24T20:05:21Z"
+			},
+			"dependsOn": []
+		}
+	]
+}
