@@ -1,0 +1,212 @@
+{
+	"name": "RDBMS_DBR_Ingestion",
+	"properties": {
+		"activities": [
+			{
+				"name": "OpenEvent-RDBMSIngestion-Start",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.0:30:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 300,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"url": {
+						"value": "@concat(pipeline().globalParameters.eventLoggingHttpUrl,'/',pipeline().parameters.env,'/insert')",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "SelfHosted-141945",
+						"type": "IntegrationRuntimeReference"
+					},
+					"body": {
+						"value": "@concat('[{\"env\":\"',pipeline().parameters.env,'\",\"process_type\":\"INGESTION\",\"data_flow_id\":null,\"record_set_id\":null,\"event_type\":\"RDBMS RAW LAYER INGESTION\",\"event_tag_id\":null,\"unique_id\":\"',pipeline().RunId,'\",\"parent_unique_id\":\"',variables('parentId'),'\",\"event_value\":\"START\",\"event_timestamp\":null,\"source_of_log\":\"ADF\",\"ddp_coordinate\":\"',pipeline().parameters.group_id,'\"}]')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "extract_compute_pool_config",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "OpenEvent-RDBMSIngestion-Start",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlMISource",
+						"sqlReaderQuery": {
+							"value": "SELECT pool_id, cluster_version, min_workers, max_workers\nFROM METADATA.EDGE_COMPUTE_CONFIG\nWHERE active_index = 1 AND ENV = '@{pipeline().parameters.env}'\nAND data_product_coordinate IN (\n    'tsingestion',\n    '@{concat('tsingestion.', pipeline().parameters.group_id)}'\n)",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_EDGE_META_DATA_RW",
+						"type": "DatasetReference",
+						"parameters": {
+							"env": "sit6",
+							"keyVault": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							},
+							"tablename": "stg_appl_info"
+						}
+					}
+				}
+			},
+			{
+				"name": "RdbmsDbIngestionWrapper",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "extract_compute_pool_config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "SendOrchFailedMsg",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"groupLvlFailure": true,
+						"callBackUrl": {
+							"value": "@pipeline().parameters.callBackUrl",
+							"type": "Expression"
+						},
+						"callBackId": {
+							"value": "@pipeline().parameters.callBackId",
+							"type": "Expression"
+						},
+						"bodyMsg": {
+							"value": "{\"status\":\"Failed\"}",
+							"type": "Expression"
+						},
+						"env": {
+							"value": "@coalesce(pipeline().parameters.env, pipeline().globalParameters.edge_env)",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "CheckNotebookOutput",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "RdbmsDbIngestionWrapper",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(activity('RdbmsDbIngestionWrapper').output.runOutput.status, 'FAILED'), equals(activity('RdbmsDbIngestionWrapper').output.runOutput.failureLevel, 'GROUP'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "SendOrchMsgBasedOnDBRNotebookSuccess",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "SendOrchFailedMsg",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"groupLvlFailure": true,
+									"callBackUrl": {
+										"value": "@pipeline().parameters.callBackUrl",
+										"type": "Expression"
+									},
+									"callBackId": {
+										"value": "@pipeline().parameters.callBackId",
+										"type": "Expression"
+									},
+									"bodyMsg": {
+										"value": "{\"status\":\"Failed\"}",
+										"type": "Expression"
+									},
+									"env": {
+										"value": "@coalesce(pipeline().parameters.env, pipeline().globalParameters.edge_env)",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"group_id": {
+				"type": "string"
+			},
+			"env": {
+				"type": "string",
+				"defaultValue": "site6"
+			},
+			"dupSkip": {
+				"type": "bool",
+				"defaultValue": true
+			},
+			"debugMode": {
+				"type": "bool",
+				"defaultValue": true
+			},
+			"callBackUrl": {
+				"type": "string"
+			},
+			"callBackId": {
+				"type": "string"
+			},
+			"clusterInitScripts": {
+				"type": "array"
+			}
+		},
+		"variables": {
+			"parentId": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "RDBMS_Ingestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-06-24T20:05:20Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

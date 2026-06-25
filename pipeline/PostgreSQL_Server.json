@@ -1,0 +1,187 @@
+{
+	"name": "PostgreSQL_Server",
+	"properties": {
+		"activities": [
+			{
+				"name": "source_connection_info",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlMISource",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_EDGE_META_DATA_RW",
+						"type": "DatasetReference",
+						"parameters": {
+							"env": "sit6",
+							"keyVault": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							},
+							"tablename": "stg_appl_info"
+						}
+					}
+				}
+			},
+			{
+				"name": "move_source_to_landing_zone",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "source_connection_info",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "2.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzurePostgreSqlSource",
+						"query": {
+							"value": "@activity('source_connection_info').output",
+							"type": "Expression"
+						},
+						"partitionOption": "None",
+						"queryTimeout": "00:10:00",
+						"convertDecimalToInteger": false
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"parallelCopies": {
+						"value": "@pipeline().parameters.degree_of_copy_parallelism",
+						"type": "Expression"
+					},
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_GenericPSQL",
+						"type": "DatasetReference",
+						"parameters": {
+							"secret": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							},
+							"host": {
+								"value": "@activity('source_connection_info').output.firstRow.host",
+								"type": "Expression"
+							},
+							"port": {
+								"value": "@activity('source_connection_info').output.firstRow.port",
+								"type": "Expression"
+							},
+							"username": {
+								"value": "@activity('source_connection_info').output.firstRow.username",
+								"type": "Expression"
+							},
+							"database": "postgresql-canc-edhoper-34001-dev-7taleugbxhski",
+							"validate_server_certificate": "N",
+							"keyvault_name": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							},
+							"tablename": {
+								"value": "@pipeline().parameters.tableName",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_EDGE_ADLS_PARQUET_Z1",
+						"type": "DatasetReference",
+						"parameters": {
+							"url": {
+								"value": "@activity('source_connection_info').output.firstRow.host",
+								"type": "Expression"
+							},
+							"fileName": {
+								"value": "@if(equals(1, 2), null, null)",
+								"type": "Expression"
+							},
+							"filePath": {
+								"value": "@pipeline().parameters.filePath",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"entity_coordinate": {
+				"type": "string"
+			},
+			"sourceID": {
+				"type": "string"
+			},
+			"targetID": {
+				"type": "string"
+			},
+			"tableName": {
+				"type": "string"
+			},
+			"degree_of_copy_parallelism": {
+				"type": "string"
+			},
+			"filePath": {
+				"type": "string"
+			},
+			"ingestionID": {
+				"type": "string"
+			},
+			"partition_field": {
+				"type": "string"
+			},
+			"env": {
+				"type": "string"
+			},
+			"parentID": {
+				"type": "string"
+			},
+			"last_value": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-06-24T20:05:20Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

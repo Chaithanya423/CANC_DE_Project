@@ -1,0 +1,97 @@
+{
+	"name": "LS_AzureDatabricks_110838_InstancePools",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"type": "AzureDatabricks",
+		"description": "This is a generic linked service pointing to 110838 Databricks instance pools.\nThis linked service will use Job clusters attached in an instance pool based on the parameters provided to it.\nThis linked service also passes base directory for libs and config. Update : dynamicSparkConf is a parameter that allows passing custom Spark configuration key-value pairs to Databricks clusters at runtime. It enables dynamic adjustment of Spark settings without modifying the base linked service definition. The newClusterSparkConf parameter logic merges two default Spark config properties with any user-provided configs from dynamicSparkConf. If dynamicSparkConf is '{}', only the defaults are used. Otherwise, user configs are appended, ensuring valid JSON and avoiding substring errors.",
+		"parameters": {
+			"poolId": {
+				"type": "string",
+				"defaultValue": "1211-192529-cope19-pool-ogc7rfyy"
+			},
+			"clusterVersion": {
+				"type": "string",
+				"defaultValue": "10.4.x-scala2.12"
+			},
+			"workers": {
+				"type": "int",
+				"defaultValue": 1
+			},
+			"env": {
+				"type": "string"
+			},
+			"dp_id": {
+				"type": "string"
+			},
+			"workloadType": {
+				"type": "string"
+			},
+			"base_path": {
+				"type": "string"
+			},
+			"cluster_log_path": {
+				"type": "string"
+			},
+			"clusterOption": {
+				"type": "string",
+				"defaultValue": "Autoscaling"
+			},
+			"clusterInitScripts": {
+				"type": "array",
+				"defaultValue": []
+			},
+			"dynamicSparkConf": {
+				"type": "array",
+				"defaultValue": []
+			},
+			"securityMode": {
+				"type": "string",
+				"defaultValue": ""
+			},
+			"policyId": {
+				"type": "string",
+				"defaultValue": ""
+			}
+		},
+		"annotations": [],
+		"typeProperties": {
+			"domain": "https://4773100082275981.1.azuredatabricks.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/eea76cb6-864b-41ed-843d-146e3ab4956a/resourceGroups/dsube20_RG-CanC-RM-COMPUTE-DEV-141945/providers/Microsoft.Databricks/workspaces/ddbr-CanC-dbr-141945-1-dev-newb7h5kjrx3i",
+			"instancePoolId": "@linkedService().poolId",
+			"dataSecurityMode": "@linkedService().securityMode",
+			"newClusterNumOfWorker": "@linkedService().workers",
+			"policyId": {
+				"value": "@if(not(empty(linkedService().policyId)), linkedService().policyId, null)",
+				"type": "Expression"
+			},
+			"newClusterSparkConf": {
+				"value": "@json(concat('{', '\"spark.databricks.delta.optimizeWrite.enabled\": \"true\",', '\"spark.databricks.delta.autoCompact.enabled\": \"true\"', if( and( not(equals(string(linkedService().dynamicSparkConf[0]), '{}')), greater(length(string(linkedService().dynamicSparkConf[0])), 2) ), concat(',', substring(string(linkedService().dynamicSparkConf[0]), 1, sub(length(string(linkedService().dynamicSparkConf[0])), 2))), ''), '}'))",
+				"type": "Expression"
+			},
+			"newClusterSparkEnvVars": {
+				"BASE_PATH": {
+					"value": "@linkedService().base_path",
+					"type": "Expression"
+				},
+				"ENV": {
+					"value": "@linkedService().env",
+					"type": "Expression"
+				},
+				"PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+			},
+			"newClusterVersion": "@linkedService().clusterVersion",
+			"newClusterLogDestination": "@linkedService().cluster_log_path",
+			"newClusterInitScripts": "@linkedService().clusterInitScripts",
+			"clusterOption": "@linkedService().clusterOption",
+			"DP_ID": {
+				"value": "@linkedService().dp_id",
+				"type": "Expression"
+			},
+			"workloadType": {
+				"value": "@linkedService().workloadType",
+				"type": "Expression"
+			}
+		}
+	}
+}

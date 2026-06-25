@@ -1,0 +1,152 @@
+{
+	"name": "RDBMS_Ingestion_Pre_Process",
+	"properties": {
+		"activities": [
+			{
+				"name": "Query RDBMS Reference Table",
+				"description": "extract feed ingestion information from INGEST.RDBMS_REFERENCE_TABLE",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.02:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlMISource",
+						"sqlReaderQuery": {
+							"value": "SELECT rrt.*, rfci.DB_TYPE as db_type\nFROM INGEST.RDBMS_REFERENCE_TABLE rrt\n JOIN INGEST.RDBMS_FEED_CONNECTION_INFO rfci ON rrt.FEED_CONNECTION_INFO_KEY = rfci.FEED_CONNECTION_INFO_KEY\nWHERE rrt.active_ind = 1\n AND rfci.active_ind = 1\n AND rrt.entity_coordinate = '@{pipeline().parameters.entity_coordinate}'",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_EDGE_META_DATA_RW",
+						"type": "DatasetReference",
+						"parameters": {
+							"env": {
+								"value": "@pipeline().parameters.env",
+								"type": "Expression"
+							},
+							"keyVault": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							},
+							"tablename": "stg_appl_info"
+						}
+					}
+				}
+			},
+			{
+				"name": "Control Lookup Check",
+				"description": "If the feed has control table need to be check before ingestion",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Query RDBMS Reference Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(toUpper(trim(activity('Query RDBMS Reference Table').output.firstRow.has_control_table_lookup)), 'Y')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Update Control Table Check Result",
+							"description": "Set RESULT based on Control table check query according to the type of database",
+							"type": "Switch",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@toUpper(trim(activity('Query RDBMS Reference Table').output.firstRow.db_type))",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "Case1",
+										"activities": [
+											{
+												"name": "Wait2",
+												"type": "Wait",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"waitTimeInSeconds": 1
+												}
+											}
+										]
+									}
+								],
+								"defaultActivities": [
+									{
+										"name": "Wait1",
+										"type": "Wait",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"waitTimeInSeconds": 1
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"entity_coordinate": {
+				"type": "string"
+			},
+			"env": {
+				"type": "string"
+			},
+			"parent_id": {
+				"type": "string"
+			},
+			"DBtype": {
+				"type": "string",
+				"defaultValue": "Oracle"
+			},
+			"canCopy": {
+				"type": "bool",
+				"defaultValue": true
+			},
+			"FULL_QUALIFIED_QUERY_RESULT": {
+				"type": "string"
+			},
+			"blank_control_table_query": {
+				"type": "string",
+				"defaultValue": "nope"
+			},
+			"last_value": {
+				"type": "string"
+			},
+			"c1": {
+				"type": "string"
+			},
+			"c2": {
+				"type": "string"
+			},
+			"errorMsg": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "RDBMS_Ingestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-06-24T20:05:20Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

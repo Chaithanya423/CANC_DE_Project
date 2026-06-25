@@ -1,0 +1,123 @@
+{
+	"name": "SendOrchFailedMsg",
+	"properties": {
+		"activities": [
+			{
+				"name": "RouteSendOrchMsg",
+				"type": "Switch",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(equals(pipeline().parameters.groupLvlFailure, true), if(not(empty(pipeline().parameters.callbackUrl)), 'viaUrl', 'none'), if(not(empty(pipeline().parameters.callbackId)), 'viaId', 'none'))",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "viaUrl",
+							"activities": [
+								{
+									"name": "sendOrchMsgViaCallbackUrl",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.00:10:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"method": "POST",
+										"headers": {
+											"httpRequestTimeout": "00:03:00"
+										},
+										"url": {
+											"value": "@pipeline().parameters.callbackUrl",
+											"type": "Expression"
+										},
+										"connectVia": {
+											"referenceName": "SelfHosted-141945",
+											"type": "IntegrationRuntimeReference"
+										},
+										"body": {
+											"value": "@pipeline().parameters.bodyMsg",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "viaId",
+							"activities": [
+								{
+									"name": "sendOrchMsgViaCallbackId",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.00:10:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"method": "POST",
+										"headers": {
+											"x-ms-version": "2020-04-08",
+											"Content-Type": "application/xml"
+										},
+										"httpRequestTimeout": "00:03:00",
+										"url": {
+											"value": "@concat(pipeline().globalParameters.adlsStorageQueueUrl, '/edge-datamigrator_processed-data-', pipeline().parameters.env, '/messages')",
+											"type": "Expression"
+										},
+										"connectVia": {
+											"referenceName": "SelfHosted-141945",
+											"type": "IntegrationRuntimeReference"
+										},
+										"body": {
+											"value": "@concat('<QueueMessage><MessageText>', base64(pipeline().parameters.bodyMsg), '</MessageText></QueueMessage>')",
+											"type": "Expression"
+										},
+										"authentication": {
+											"type": "MSI",
+											"resource": "https://storage.azure.com/"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"groupLvlFailure": {
+				"type": "bool",
+				"defaultValue": false
+			},
+			"callbackUrl": {
+				"type": "string"
+			},
+			"callbackId": {
+				"type": "string"
+			},
+			"bodyMsg": {
+				"type": "string"
+			},
+			"env": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "RDBMS_Ingestion"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-06-24T09:09:28Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

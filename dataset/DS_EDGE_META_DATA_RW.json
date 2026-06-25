@@ -1,0 +1,32 @@
+{
+	"name": "DS_EDGE_META_DATA_RW",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_EDGE_META_DATA_RW",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"env": {
+				"type": "string"
+			},
+			"keyVault": {
+				"type": "string"
+			},
+			"tablename": {
+				"type": "string",
+				"defaultValue": "stg_appl_info"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlMITable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "METADATA",
+			"table": {
+				"value": "@dataset().tablename",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

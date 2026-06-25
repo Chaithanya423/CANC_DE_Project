@@ -1,0 +1,63 @@
+{
+	"name": "LS_GenericPSQL",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"secret": {
+				"type": "string"
+			},
+			"host": {
+				"type": "string"
+			},
+			"port": {
+				"type": "string"
+			},
+			"username": {
+				"type": "string"
+			},
+			"database": {
+				"type": "string"
+			},
+			"validate_server_certificate": {
+				"type": "string"
+			},
+			"keyvault_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzurePostgreSql",
+		"version": "2.0",
+		"typeProperties": {
+			"server": "@linkedService().host",
+			"database": {
+				"type": "string",
+				"defaultValue": "postgresql-canc-edhoper-34001-dev-7taleugbxhski"
+			},
+			"port": {
+				"type": "string",
+				"defaultValue": "5432"
+			},
+			"username": "@linkedService().username",
+			"validateServerCertificate": true,
+			"secret": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_GenericKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"keyVaultName": "@linkedService().keyvault_name"
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().secret",
+					"type": "Expression"
+				}
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHosted-141945",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

@@ -1,0 +1,42 @@
+{
+	"name": "DS_EDGE_ADLS_PARQUET_Z1",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_EDGE_ADLS_Z1",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+			}
+		},
+		"parameters": {
+			"url": {
+				"type": "string",
+				"defaultValue": "https://dcct01kbkzh75jiawSu.dfs.core.windows.net/"
+			},
+			"fileName": {
+				"type": "string"
+			},
+			"filePath": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().fileName",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().filePath",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,7 @@
+{
+	"name": "SelfHosted-141945",
+	"properties": {
+		"type": "SelfHosted",
+		"description": "Self Hosted Integration Runtime created by Cloud Engineering"
+	}
+}

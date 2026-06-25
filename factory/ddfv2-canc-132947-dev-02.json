@@ -1,0 +1,45 @@
+{
+	"name": "ddfv2-canc-132947-dev-02",
+	"properties": {
+		"globalParameters": {
+			"edge_env": {
+				"type": "string",
+				"value": "sit6"
+			},
+			"nodeLevelKeyVault": {
+				"type": "string",
+				"value": "d132947keyvault"
+			},
+			"databricksWorkspace": {
+				"type": "string",
+				"value": "https://dummy.azuredatabricks.net/"
+			},
+			"adlsStorageAcctUrl": {
+				"type": "string",
+				"value": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+			},
+			"eventLoggingHttpUrl": {
+				"type": "string",
+				"value": "api/status/"
+			},
+			"adlsStorageQueueUrl": {
+				"type": "string",
+				"value": "queue"
+			}
+		},
+		"globalConfigurations": {
+			"factoryStagingLSReferenceName": "LS_EDGE_ADLS_Z1",
+			"factoryStagingLSType": "LinkedServiceReference"
+		},
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "e9743988-aec8-48ee-bac3-19ed37f97875",
+		"tenantId": "f1612ec2-0692-47f3-ba07-8c9d04cacdf0"
+	}
+}

@@ -1,0 +1,36 @@
+{
+	"name": "LS_GenericSQLServer",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "SQL Server",
+		"parameters": {
+			"server": {
+				"type": "string"
+			},
+			"database": {
+				"type": "string"
+			},
+			"username": {
+				"type": "string"
+			},
+			"password": {
+				"type": "string",
+				"defaultValue": ""
+			}
+		},
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"server": "",
+			"database": "",
+			"encrypt": "mandatory",
+			"trustServerCertificate": true,
+			"authenticationType": "SQL",
+			"userName": "",
+			"password": {
+				"value": "@linkedService().password",
+				"type": "Expression"
+			}
+		}
+	}
+}

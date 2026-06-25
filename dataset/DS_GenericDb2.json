@@ -1,0 +1,29 @@
+{
+	"name": "DS_GenericDb2",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_GenericDb2",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"rdbmsSourceSecret": "edge-sc-c-m1020-1912"
+			}
+		},
+		"parameters": {
+			"rdbmsSourceSecret": {
+				"type": "string",
+				"defaultValue": "edge-sc-c-m1020-1912"
+			},
+			"keyVault": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Db2Table",
+		"schema": [],
+		"typeProperties": {
+			"schema": "ADGCAP1",
+			"table": "CS_REASON"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,37 @@
+{
+	"name": "LS_GenericDb2",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"rdbmsSourceSecret": {
+				"type": "string",
+				"defaultValue": "edge-sc-c-m1020-1912"
+			},
+			"keyVault": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"typeProperties": {
+			"connectionString": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_GenericKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"keyVaultName": "@linkedService().keyVault"
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().rdbmsSourceSecret",
+					"type": "Expression"
+				}
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHosted-141945",
+			"type": "IntegrationRuntimeReference"
+		},
+		"type": "Db2"
+	}
+}

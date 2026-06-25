@@ -1,0 +1,56 @@
+{
+	"name": "LS_GenericPSQ0",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"secret": {
+				"type": "string"
+			},
+			"port": {
+				"type": "string"
+			},
+			"host": {
+				"type": "string"
+			},
+			"database": {
+				"type": "string",
+				"defaultValue": "acct"
+			},
+			"username": {
+				"type": "string"
+			},
+			"keyvault_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzurePostgreSql",
+		"version": "2.0",
+		"typeProperties": {
+			"server": "@linkedService().host",
+			"database": "@linkedService().database",
+			"sslMode": 2,
+			"username": "@linkedService().username",
+			"authenticationType": "Basic",
+			"trustServerCertificate": true,
+			"secret": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "LS_GenericKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"keyVaultName": "@linkedService().keyvault_name"
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().secret",
+					"type": "Expression"
+				}
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHosted-141945",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

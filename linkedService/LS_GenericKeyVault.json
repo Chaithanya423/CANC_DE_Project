@@ -1,0 +1,17 @@
+{
+	"name": "LS_GenericKeyVault",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "This is a generic key vault that will help DP to use respective AKS",
+		"parameters": {
+			"keyVaultName": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://d132947keyvault.vault.azure.net/"
+		}
+	}
+}

@@ -1,0 +1,165 @@
+{
+	"name": "DB2_Server",
+	"properties": {
+		"activities": [
+			{
+				"name": "move_source_to_landing_zone",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "source_connection_info",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "2.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "Db2Source",
+						"query": {
+							"value": "@activity('source_connection_info').output.resultSets[0].rows[0].result",
+							"type": "Expression"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"parallelCopies": {
+						"value": "@pipeline().parameters.degree_of_copy_parallelism",
+						"type": "Expression"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_GenericDb2",
+						"type": "DatasetReference",
+						"parameters": {
+							"rdbmsSourceSecret": "edge-sc-c-m1020-1912",
+							"keyVault": {
+								"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_EDGE_ADLS_PARQUET_Z1",
+						"type": "DatasetReference",
+						"parameters": {
+							"url": {
+								"value": "@activity('source_connection_info').output.firstRow.host",
+								"type": "Expression"
+							},
+							"fileName": {
+								"value": "@if(equals(1, 2), null, null)",
+								"type": "Expression"
+							},
+							"filePath": {
+								"value": "@pipeline().parameters.filePath",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "source_connection_info",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "select * from INGEST.RDBMS_FEED_CONNECTION_INFO where FEED_CONNECTION_INFO_KEY = '@{pipeline().parameters.sourceID}' and active_ind = 1",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_GenericSQLServer",
+						"type": "DatasetReference",
+						"parameters": {
+							"server": "dummy",
+							"database": "dummy",
+							"username": "dummy",
+							"password": "dummy",
+							"tablename": "dummy"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"entity_coordinate": {
+				"type": "string"
+			},
+			"sourceID": {
+				"type": "string"
+			},
+			"targetID": {
+				"type": "string",
+				"defaultValue": "3"
+			},
+			"tableName": {
+				"type": "string"
+			},
+			"degree_of_copy_parallelism": {
+				"type": "int"
+			},
+			"filePath": {
+				"type": "string"
+			},
+			"ingestionID": {
+				"type": "string"
+			},
+			"partition_field": {
+				"type": "string"
+			},
+			"env": {
+				"type": "string"
+			},
+			"parentID": {
+				"type": "string"
+			},
+			"last_value": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"rowsCopied": {
+				"type": "Integer"
+			}
+		},
+		"folder": {
+			"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-06-24T20:05:20Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
