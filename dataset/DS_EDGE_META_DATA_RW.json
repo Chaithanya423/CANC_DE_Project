@@ -3,7 +3,17 @@
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "LS_EDGE_META_DATA_RW",
-			"type": "LinkedServiceReference"
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"env": {
+					"value": "@dataset().env",
+					"type": "Expression"
+				},
+				"keyVault": {
+					"value": "@dataset().keyVault",
+					"type": "Expression"
+				}
+			}
 		},
 		"parameters": {
 			"env": {

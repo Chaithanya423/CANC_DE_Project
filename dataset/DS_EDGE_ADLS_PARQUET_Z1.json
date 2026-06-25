@@ -5,13 +5,13 @@
 			"referenceName": "LS_EDGE_ADLS_Z1",
 			"type": "LinkedServiceReference",
 			"parameters": {
-				"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+				"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
 			}
 		},
 		"parameters": {
 			"url": {
 				"type": "string",
-				"defaultValue": "https://dcct01kbkzh75jiawSu.dfs.core.windows.net/"
+				"defaultValue": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
 			},
 			"fileName": {
 				"type": "string"

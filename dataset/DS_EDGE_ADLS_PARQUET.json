@@ -1,0 +1,21 @@
+{
+	"name": "DS_EDGE_ADLS_PARQUET",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_EDGE_ADLS_Z1",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
+}
