@@ -5,12 +5,16 @@
 			"referenceName": "LS_EDGE_ADLS_Z1",
 			"type": "LinkedServiceReference",
 			"parameters": {
-				"url": "https://dent01vfgsabdwjvily1.dfs.core.windows.net"
+				"url": {
+					"value": "@dataset().url",
+					"type": "Expression"
+				}
 			}
 		},
 		"parameters": {
 			"url": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "https://dent01vfgsabdwjvily1.dfs.core.windows.net/"
 			},
 			"fileName": {
 				"type": "string"
