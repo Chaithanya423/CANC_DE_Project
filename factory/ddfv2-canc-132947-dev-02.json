@@ -25,6 +25,10 @@
 			"adlsStorageQueueUrl": {
 				"type": "string",
 				"value": "queue"
+			},
+			"ingestionIdRegistryHttpUrl": {
+				"type": "string",
+				"value": "dummy"
 			}
 		},
 		"globalConfigurations": {
