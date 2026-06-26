@@ -1060,265 +1060,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/RDBMS_ADF_Ingestion')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "query entity_coordinate",
-						"description": "Find entity_coordinate based on the provided group_id ordered by the execution order in group.",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.01:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": {
-									"value": "select entity_coordinate, iif(isjson(rdm.additional_param) = 1, coalesce(json_value(t.additional_info, '$.execution_order_in_group'), 1), 1) as execution_order, iif(isjson(rdm.additional_param) = 1, coalesce(json_value(rdm.additional_param, '$.LEGACY_DDP_TABLE_COORDINATE'), '') , '') as legacy_ddp_table_coordinate from json_value(rdm.additional_param, '$.LEGACY_DDP_TABLE_COORDINATE') rdm on ingest.RECORDSET_TO_DELTA_MAPPING_v2 rdm on rdm.ACTIVE_IND = '1' and ingest.rdbms_reference_table as t left outer join ingest.RECORDSET_TO_DELTA_MAPPING_v2 rdm on rdm.DDP_TABLE_COORDINATE = t.DDP_TABLE_COORDINATE and rdm.DDP_TABLE_GROUP_COORDINATE = t.DDP_TABLE_GROUP_COORDINATE where group_id = '@{pipeline().parameters.group_id}' and t.active_ind = 1 order by execution_order",
-									"type": "Expression"
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "DS_EDGE_META_DATA_RW",
-								"type": "DatasetReference",
-								"parameters": {
-									"tablename": {
-										"value": "tbl",
-										"type": "Expression"
-									},
-									"env": {
-										"value": "@pipeline().parameters.env",
-										"type": "Expression"
-									},
-									"keyVault": {
-										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
-										"type": "Expression"
-									}
-								}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "loop entity_coordinate",
-						"description": "ForEach loop over each entity coordinate",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "query entity_coordinate",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('query entity_coordinate').output.value",
-								"type": "Expression"
-							},
-							"isSequential": false,
-							"batchCount": 5,
-							"activities": [
-								{
-									"name": "Run RDBMS Ingestion Dispatcher",
-									"description": "Run RDMBS Ingestion for each entity_coordinate",
-									"type": "ExecutePipeline",
-									"state": "Inactive",
-									"onInactiveMarkAs": "Failed",
-									"dependsOn": [],
-									"policy": {
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"waitOnCompletion": true,
-										"parameters": {}
-									}
-								},
-								{
-									"name": "SendOrchMsgChild",
-									"type": "ExecutePipeline",
-									"state": "Inactive",
-									"onInactiveMarkAs": "Succeeded",
-									"dependsOn": [
-										{
-											"activity": "Run RDBMS Ingestion Dispatcher",
-											"dependencyConditions": [
-												"Failed"
-											]
-										}
-									],
-									"policy": {
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "SendOrchFailedMsg",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"groupLvlFailure": false,
-											"callbackUrl": {
-												"value": "@pipeline().parameters.callBackUrl",
-												"type": "Expression"
-											},
-											"callbackId": {
-												"value": "@pipeline().parameters.callBackId",
-												"type": "Expression"
-											},
-											"bodyMsg": {
-												"value": "@concat('{\"env\":\"', pipeline().parameters.env, '\", \"ddpFileCoordinate\":\"', item().entity_coordinate, '\", \"status\":\"FAILED\", \"errorMsg\":\"', activity('Run RDBMS Ingestion Dispatcher').output.pipelineReturnValue.errorMsg, '\"}')",
-												"type": "Expression"
-											},
-											"env": {
-												"value": "@coalesce(pipeline().parameters.env, pipeline().globalParameters.edge_env)",
-												"type": "Expression"
-											}
-										}
-									}
-								},
-								{
-									"name": "FailedOnRunRDBMSIngestionPipeline",
-									"description": "Fail activity for failed entity_coordinate",
-									"type": "Fail",
-									"state": "Inactive",
-									"onInactiveMarkAs": "Succeeded",
-									"dependsOn": [
-										{
-											"activity": "SendOrchMsgChild",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"userProperties": [],
-									"typeProperties": {
-										"message": {
-											"value": "RDBMS Ingestion Pipeline Failed for entity_coordinate: @{item()}",
-											"type": "Expression"
-										},
-										"errorCode": "-101"
-									}
-								}
-							]
-						}
-					},
-					{
-						"name": "SendOrchMsgMain",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "query entity_coordinate",
-								"dependencyConditions": [
-									"Failed"
-								]
-							}
-						],
-						"policy": {
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "SendOrchFailedMsg",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {
-								"groupLvlFailure": true,
-								"callbackUrl": {
-									"value": "@pipeline().parameters.callBackUrl",
-									"type": "Expression"
-								},
-								"callbackId": {
-									"value": "@pipeline().parameters.callBackId",
-									"type": "Expression"
-								},
-								"bodyMsg": {
-									"value": "{'status':\"Failed\"}",
-									"type": "Expression"
-								},
-								"env": {
-									"value": "@coalesce(pipeline().parameters.env, pipeline().globalParameters.edge_env)",
-									"type": "Expression"
-								}
-							}
-						}
-					},
-					{
-						"name": "FailedOnGettingEntityCoordinate",
-						"description": "Fail RDBMS Ingestion Pipeline for the target group",
-						"type": "Fail",
-						"dependsOn": [
-							{
-								"activity": "SendOrchMsgMain",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"message": {
-								"value": "RDBMS Ingestion Pipeline Failed for group_id: @{pipeline().parameters.group_id}",
-								"type": "Expression"
-							},
-							"errorCode": "-101"
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"parameters": {
-					"group_id": {
-						"type": "string",
-						"defaultValue": "2704"
-					},
-					"env": {
-						"type": "string",
-						"defaultValue": "sit6"
-					},
-					"dupSkip": {
-						"type": "bool",
-						"defaultValue": true
-					},
-					"debugMode": {
-						"type": "bool",
-						"defaultValue": true
-					},
-					"callBackUrl": {
-						"type": "string"
-					},
-					"callBackId": {
-						"type": "string"
-					}
-				},
-				"folder": {
-					"name": "RDBMS_Ingestion"
-				},
-				"annotations": [],
-				"lastPublishTime": "2026-06-24T20:05:21Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_EDGE_META_DATA_RW')]",
-				"[concat(variables('factoryId'), '/pipelines/SendOrchFailedMsg')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/RDBMS_DBR_Ingestion')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -1697,6 +1438,101 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_EDGE_META_DATA_RW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQL_Server')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "source_connection_info",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "select * from INGEST.RDBMS_FEED_CONNECTION_INFO where FEED_CONNECTION_INFO_KEY = '@{pipeline().parameters.sourceID}' and active_ind = 1",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_GenericSQLServer",
+								"type": "DatasetReference",
+								"parameters": {
+									"server": "dummy",
+									"database": "dummy",
+									"username": "dummy",
+									"password": "dummy",
+									"tablename": "dummy"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"entity_coordinate": {
+						"type": "string"
+					},
+					"sourceID": {
+						"type": "string"
+					},
+					"targetID": {
+						"type": "string"
+					},
+					"tableName": {
+						"type": "string"
+					},
+					"degree_of_copy_parallelism": {
+						"type": "int"
+					},
+					"filePath": {
+						"type": "string"
+					},
+					"ingestionID": {
+						"type": "string"
+					},
+					"partition_field": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string"
+					},
+					"parentID": {
+						"type": "string"
+					},
+					"last_value": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"rowsCopied": {
+						"type": "Integer"
+					}
+				},
+				"folder": {
+					"name": "RDBMS_Ingestion/Database Specific Ingestion Pipelines"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-06-24T20:05:20Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_GenericSQLServer')]"
 			]
 		}
 	]
