@@ -19,6 +19,10 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
+					"pipeline": {
+						"referenceName": "DB2_Server",
+						"type": "PipelineReference"
+					},
 					"waitOnCompletion": true
 				}
 			},
