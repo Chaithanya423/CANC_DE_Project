@@ -71,22 +71,22 @@
 							"name": "Run RDBMS Ingestion Dispatcher",
 							"description": "Run RDMBS Ingestion for each entity_coordinate",
 							"type": "ExecutePipeline",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Failed",
 							"dependsOn": [],
 							"policy": {
 								"secureInput": false
 							},
 							"userProperties": [],
 							"typeProperties": {
+								"pipeline": {
+									"referenceName": "SQL_Server",
+									"type": "PipelineReference"
+								},
 								"waitOnCompletion": true
 							}
 						},
 						{
 							"name": "SendOrchMsgChild",
 							"type": "ExecutePipeline",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Run RDBMS Ingestion Dispatcher",
@@ -130,8 +130,6 @@
 							"name": "FailedOnRunRDBMSIngestionPipeline",
 							"description": "Fail activity for failed entity_coordinate",
 							"type": "Fail",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "SendOrchMsgChild",
