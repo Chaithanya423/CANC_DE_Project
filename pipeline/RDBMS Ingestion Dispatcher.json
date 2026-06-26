@@ -19,29 +19,7 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"waitOnCompletion": true,
-					"parameters": {
-						"entity_coordinate": {
-							"value": "@pipeline().parameters.entity_coordinate",
-							"type": "Expression"
-						},
-						"ingestionID": {
-							"value": "@variables(ingestionID)",
-							"type": "Expression"
-						},
-						"filePath": {
-							"value": "@variables(filePath)",
-							"type": "Expression"
-						},
-						"env": {
-							"value": "@pipeline().parameters.env",
-							"type": "Expression"
-						},
-						"parentID": {
-							"value": "@variables(parentID)",
-							"type": "Expression"
-						}
-					}
+					"waitOnCompletion": true
 				}
 			},
 			{
@@ -66,12 +44,24 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "SqlMISource",
-						"sqlReaderQuery": {
-							"value": "select raw_layer_target_location as filePath, source_table as fileName, rfc.host from INGEST.RDBMS_FEED_CONNECTION_INFO rfc on rrt.feed_connection_info_key = rfc.feed_connection_info_key where entity_coordinate = '@{concat(n pipeline().parameters.entity_coordinate)}' and rrt.active_ind = 1",
-							"type": "Expression"
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "/landing",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.parquet",
+							"enablePartitionDiscovery": false
 						},
-						"partitionOption": "None"
+						"formatSettings": {
+							"type": "ParquetReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DS_EDGE_ADLS_PARQUET",
+						"type": "DatasetReference"
 					}
 				}
 			},
@@ -130,17 +120,17 @@
 				"typeProperties": {
 					"method": "POST",
 					"url": {
-						"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
+						"value": "@concat(pipeline().globalParameters.eventLoggingHttpUrl,'/',pipeline().parameters.env,'/insert')",
 						"type": "Expression"
 					},
 					"body": {
-						"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"START\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+						"value": "{\n  \"env\": \"@{pipeline().parameters.env}\",\n  \"process_type\": \"INGESTION\",\n  \"data_flow_id\": null,\n  \"record_set_id\": null,\n  \"event_type\": \"RDBMS RAW LAYER INGESTION\",\n  \"event_tag_id\": \"@{variables('ingestionID')}\",\n  \"unique_id\": \"@{pipeline().RunId}\",\n  \"parent_unique_id\": \"@{variables('parentID')}\",\n  \"event_value\": \"START\",\n  \"event_timestamp\": null,\n  \"source_of_log\": \"ADF\",\n  \"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Co-ordinate in INGEST.RDBMS_REFERENCE_TABLE",
+				"name": "OpenEvent Log Failed lookup for the DDP co-ordinate",
 				"description": "OpenEvent Log: Failed lookup for the DDP co-ordinate in INGEST.RDBMS_REFERENCE_TABLE",
 				"type": "WebActivity",
 				"dependsOn": [
@@ -162,11 +152,11 @@
 				"typeProperties": {
 					"method": "POST",
 					"url": {
-						"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
+						"value": "@concat(pipeline().globalParameters.eventLoggingHttpUrl, '/', pipeline().parameters.env, '/insert')",
 						"type": "Expression"
 					},
 					"body": {
-						"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"FAILED\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+						"value": "{\n  \"env\": \"@{pipeline().parameters.env}\",\n  \"process_type\": \"INGESTION\",\n  \"data_flow_id\": null,\n  \"record_set_id\": null,\n  \"event_type\": \"RDBMS RAW LAYER INGESTION\",\n  \"event_tag_id\": \"@{variables('ingestionID')}\",\n  \"unique_id\": \"@{pipeline().RunId}\",\n  \"parent_unique_id\": \"@{variables('parentID')}\",\n  \"event_value\": \"FAILED\",\n  \"event_timestamp\": null,\n  \"source_of_log\": \"ADF\",\n  \"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}",
 						"type": "Expression"
 					}
 				}
@@ -194,11 +184,11 @@
 				"typeProperties": {
 					"method": "POST",
 					"url": {
-						"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
+						"value": "@concat(pipeline().globalParameters.eventLoggingHttpUrl,'/',pipeline().parameters.env,'/insert')",
 						"type": "Expression"
 					},
 					"body": {
-						"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"SUCCEEDED\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+						"value": "{\n  \"env\": \"@{pipeline().parameters.env}\",\n  \"process_type\": \"INGESTION\",\n  \"data_flow_id\": null,\n  \"record_set_id\": null,\n  \"event_type\": \"RDBMS RAW LAYER INGESTION\",\n  \"event_tag_id\": \"@{variables('ingestionID')}\",\n  \"unique_id\": \"@{pipeline().RunId}\",\n  \"parent_unique_id\": \"@{variables('parentID')}\",\n  \"event_value\": \"SUCCEEDED\",\n  \"event_timestamp\": null,\n  \"source_of_log\": \"ADF\",\n  \"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}",
 						"type": "Expression"
 					}
 				}
@@ -226,11 +216,11 @@
 				"typeProperties": {
 					"method": "POST",
 					"url": {
-						"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
+						"value": "@concat(\n    pipeline().globalParameters.eventLoggingHttpUrl,\n    '/',\n    pipeline().parameters.env,\n    '/insert'\n)",
 						"type": "Expression"
 					},
 					"body": {
-						"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"FAILED\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+						"value": "{\n  \"env\": \"@{pipeline().parameters.env}\",\n  \"process_type\": \"INGESTION\",\n  \"data_flow_id\": null,\n  \"record_set_id\": null,\n  \"event_type\": \"RDBMS RAW LAYER INGESTION\",\n  \"event_tag_id\": \"@{variables('ingestionID')}\",\n  \"unique_id\": \"@{pipeline().RunId}\",\n  \"parent_unique_id\": \"@{variables('parentID')}\",\n  \"event_value\": \"FAILED\",\n  \"event_timestamp\": null,\n  \"source_of_log\": \"ADF\",\n  \"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}",
 						"type": "Expression"
 					}
 				}
@@ -258,7 +248,7 @@
 				"typeProperties": {
 					"method": "POST",
 					"url": {
-						"value": "@concat(n  pipeline().globalParameters.ingestionRegistryHttpUrl,\n '/\\n  pipeline().parameters.entity_coordinate,\n  '/?\\naction=postIngestionArrayElement&ingestionId=',\n  variables(ingestionID)\\n)",
+						"value": "@concat(\n    pipeline().globalParameters.ingestionRegistryHttpUrl,\n    '/',\n    pipeline().parameters.entity_coordinate,\n    '/?action=postIngestionArrayElement&ingestionId=',\n    variables('ingestionID')\n)",
 						"type": "Expression"
 					},
 					"body": {
@@ -269,9 +259,16 @@
 			},
 			{
 				"name": "Validate Duplicate Ingestion ID",
-				"description": "In the past IngestionID Registry assigned using old ingestion ID resulting in NJ job failure. Hence, this activity will check if the ADLS path derived based on ingestion_id is empty or if there is a file already. Will try to get new ID max 3 times before erroring out.",
+				"description": "In the past IngestionID Registry returned already used ingestion ID, resulting into NI job failure. Hence, this activity will checks if the ADLS path derived based on ingestion_id is empty or if there is a file already. Will try to get new ID max 3 times before erroring out.",
 				"type": "Until",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Lookup File Record and Target Host",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
@@ -285,14 +282,14 @@
 							"type": "GetMetadata",
 							"dependsOn": [
 								{
-									"activity": "Set FilePath",
+									"activity": "Set filePath",
 									"dependencyConditions": [
 										"Succeeded"
 									]
 								}
 							],
 							"policy": {
-								"timeout": "0:12:00:00",
+								"timeout": "0.12:00:00",
 								"retry": 0,
 								"retryIntervalInSeconds": 30,
 								"secureOutput": false,
@@ -308,8 +305,12 @@
 											"value": "@activity('Lookup File Record and Target Host').output.firstRow.host",
 											"type": "Expression"
 										},
+										"fileName": {
+											"value": "@if(equals(1, 2), null, null)",
+											"type": "Expression"
+										},
 										"filePath": {
-											"value": "@variables(filePath)",
+											"value": "@variables('filePath')",
 											"type": "Expression"
 										}
 									}
@@ -317,16 +318,28 @@
 								"fieldList": [
 									"exists"
 								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
 								"formatSettings": {
 									"type": "ParquetReadSettings"
 								}
 							}
 						},
 						{
-							"name": "ingestion_id",
+							"name": "set ingestion_id",
 							"description": "Ingestion ID value obtained from Ingestion Controller response",
 							"type": "SetVariable",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "Validate Entity is Registered",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"secureOutput": false,
 								"secureInput": false
@@ -344,16 +357,9 @@
 							"name": "IngestionIdRegistry",
 							"description": "Lookup activity to get a new IngestionId for the current run of the ddp_coordinate",
 							"type": "WebActivity",
-							"dependsOn": [
-								{
-									"activity": "ingestion_id",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
-								"timeout": "0:10:00",
+								"timeout": "0.0:30:00",
 								"retry": 2,
 								"retryIntervalInSeconds": 300,
 								"secureOutput": false,
@@ -363,20 +369,27 @@
 							"typeProperties": {
 								"method": "GET",
 								"url": {
-									"value": "@concat(n  pipeline().globalParameters.ingestionRegistryHttpUrl,\n '/\\n  pipeline().parameters.entity_coordinate\\n')",
+									"value": "@concat(pipeline().globalParameters.ingestionIdRegistryHttpUrl,'/',pipeline().parameters.env,'/',pipeline().parameters.entity_coordinate)",
 									"type": "Expression"
 								},
 								"body": {
-									"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"START\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+									"value": "{[\n\t\"env\": \"@{pipeline().parameters.env}\",\n\t\"process_type\": \"INGESTION\",\n\t\"data_flow_id\": null,\n\t\"record_set_id\": null,\n\t\"event_type\": \"RDBMS RAW LAYER INGESTION\",\n\t\"event_tag_id\": \"@{variables('ingestionID')}\",\n\t\"unique_id\": \"@{pipeline().RunId}\",\n\t\"parent_unique_id\": \"@{variables('parentID')}\",\n\t\"event_value\": \"START\",\n\t\"event_timestamp\": null,\n\t\"source_of_log\": \"ADF\",\n\t\"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}]",
 									"type": "Expression"
 								}
 							}
 						},
 						{
-							"name": "Set FilePath",
+							"name": "Set filePath",
 							"description": "Calculate the target file path to copy the data from the source",
 							"type": "SetVariable",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "set ingestion_id",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"secureOutput": false,
 								"secureInput": false
@@ -385,14 +398,14 @@
 							"typeProperties": {
 								"variableName": "filePath",
 								"value": {
-									"value": "@concat(activity('Lookup File Record and Target Host').output.firstRow.filePath,\n  '/', activity('Lookup File Record and Target Host').output.firstRow.fileName)",
+									"value": "@concat(\nactivity('Lookup File Record and Target Host').output.firstRow.filePath,\n'/ingestion_id=',\nvariables('ingestionID')\n)",
 									"type": "Expression"
 								}
 							}
 						},
 						{
-							"name": "OpenEvent-RDBMSIngestion-Failed-NonRegistered",
-							"description": "OpenEvent log when failed to get unique ingestion ID",
+							"name": "OperEvent-RDBMSIngestion-Failed_NonRegistered",
+							"description": "OperEvent error if entity is not registered or IngestionIdRegitry is not reachable",
 							"type": "WebActivity",
 							"dependsOn": [
 								{
@@ -403,7 +416,7 @@
 								}
 							],
 							"policy": {
-								"timeout": "0:03:00",
+								"timeout": "0.0:30:00",
 								"retry": 2,
 								"retryIntervalInSeconds": 300,
 								"secureOutput": false,
@@ -413,43 +426,84 @@
 							"typeProperties": {
 								"method": "POST",
 								"url": {
-									"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
+									"value": "@concat(\n  pipeline().globalParameters.eventLoggingHttpUrl,\n  '/',\n  pipeline().parameters.env,\n  '/insert'\n)",
 									"type": "Expression"
 								},
 								"body": {
-									"value": "{\"\\n\\t\\\"env\\\": \\\"@{pipeline().parameters.env}\\\",  \\n\\t\\\"process_type\\\": \\\"INGESTION\\\",  \\n\\t\\\"data_flow_id\\\": null,  \\n\\t\\\"record_set_id\\\": null,  \\n\\t\\\"event_type\\\": \\\"RDBMS RAW LAYER INGESTION\\\",  \\n\\t\\\"event_tag_id\\\": \\\"@{variables(ingestionID)}\\\",  \\n\\t\\\"unique_id\\\": \\\"@{pipeline().RunId}\\\",  \\n\\t\\\"parent_unique_id\\\": \\\"@{variables(parentID)}\\\",  \\n\\t\\\"event_value\\\": \\\"FAILED\\\",  \\n\\t\\\"event_timestamp\\\": null,  \\n\\t\\\"source_of_log\\\": \\\"ADF\\\",  \\n\\t\\\"ddp_coordinate\\\": \\\"@{pipeline().parameters.entity_coordinate}\\\"  \\n}",
+									"value": "{[\n\t\"env\": \"@{pipeline().parameters.env}\",\n\t\"process_type\": \"INGESTION\",\n\t\"data_flow_id\": null,\n\t\"record_set_id\": null,\n\t\"event_type\": \"RDBMS RAW LAYER INGESTION\",\n\t\"event_tag_id\": \"@{variables('ingestionID')}\",\n\t\"unique_id\": \"@{pipeline().RunId}\",\n\t\"parent_unique_id\": \"@{variables('parentID')}\",\n\t\"event_value\": \"Failed: Non Registered Entity\",\n\t\"event_timestamp\": null,\n\t\"source_of_log\": \"ADF\",\n\t\"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}]",
 									"type": "Expression"
 								}
 							}
-						}
-					]
-				},
-				"policy": {
-					"timeout": "12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false,
-					"userProperties": []
-				}
-			},
-			{
-				"name": "Count and Unique Fail Check",
-				"description": "The count starts at 0 and increments with each run.N2. On the 3rd run, the count will reach 2 (since counting starts from 0).N3. At this point - If the folder path exists, the pipeline will fail, and the next activity will be skipped to determine whether to fail the pipeline or proceed with ingestion.",
-				"type": "IfCondition",
-				"dependsOn": [],
-				"userProperties": [],
-				"typeProperties": {
-					"expression": {
-						"value": "@and(greaterOrEquals(variables('Count'), 2), activity('Check Folder Path').output.exists)",
-						"type": "Expression"
-					},
-					"ifFalseActivities": [
+						},
 						{
-							"name": "setNoUniqueIdError",
-							"description": "Set no unique id error",
-							"type": "SetVariable",
+							"name": "Count and Unique Fail Check",
+							"description": "1. The count starts at 0 and increments with each run.\n2. On the 3rd run, the count will reach 2 (since counting starts from 0).\n3. At this point:\n   - If the folder path exists, the pipeline will fail, and the next activity will be skipped.\n   - If the folder path does not exist, the loop will break, and the pipeline will proceed to the ingestion step.\n\nThis logic checks both the folder's existence and the count value to determine whether to fail the pipeline or proceed with ingestion.",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Check Folder Path",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@and(greaterOrEquals(variables('Count'), 2), activity('Check Folder Path').output.exists)",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Abort Pipeline",
+										"description": "Abort the pipeline run if unable to retrieve a unique ingestion ID more than 3 times",
+										"type": "Fail",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "Pipeline run has been aborted since a unique ingestion ID could not be retrieved. Retry this pipeline after sometime.",
+											"errorCode": "500"
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "OperEvent-RDBMSIngestion-FailedNoUniqueIngestionID",
+							"description": "OperEvent log when failed to get unique ingestion ID after trying 3 times",
+							"type": "WebActivity",
 							"dependsOn": [],
+							"policy": {
+								"timeout": "0.0:30:00",
+								"retry": 2,
+								"retryIntervalInSeconds": 300,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"url": {
+									"value": "@concat(\n  pipeline().globalParameters.eventLoggingHttpUrl,\n  '/',\n  pipeline().parameters.env,\n  '/insert'\n)",
+									"type": "Expression"
+								},
+								"body": {
+									"value": "{[\n\t\"env\": \"@{pipeline().parameters.env}\",\n\t\"process_type\": \"INGESTION\",\n\t\"data_flow_id\": null,\n\t\"record_set_id\": null,\n\t\"event_type\": \"RDBMS RAW LAYER INGESTION\",\n\t\"event_tag_id\": \"@{variables('ingestionID')}\",\n\t\"unique_id\": \"@{pipeline().RunId}\",\n\t\"parent_unique_id\": \"@{variables('parentID')}\",\n\t\"event_value\": \"Pipeline execution has been aborted since no unique ingestionID could be retrieved.\",\n\t\"event_timestamp\": null,\n\t\"source_of_log\": \"ADF\",\n\t\"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"\n}]",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Exit Until Loop",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "OperEvent-RDBMSIngestion-FailedNoUniqueIngestionID",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
 							"policy": {
 								"secureOutput": false,
 								"secureInput": false
@@ -462,164 +516,15 @@
 									"type": "Expression"
 								}
 							}
-						}
-					],
-					"ifTrueActivities": [
-						{
-							"name": "Abort Duplicate FailedNoUniqueIngestionID",
-							"description": "Abort the pipeline run if unable to retrieve a unique ingestion ID more than 3 times",
-							"type": "Fail",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"message": "Pipeline run has been aborted since a unique ingestion ID could not be retrieved. Retry this pipeline after sometime.",
-								"errorCode": "500"
-							}
 						},
 						{
-							"name": "OpenEvent-RDBMSIngestion-FailedNoUniqueIngestionID",
-							"description": "OpenEvent log when failed to get unique ingestion ID",
-							"type": "WebActivity",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0:03:00",
-								"retry": 2,
-								"retryIntervalInSeconds": 300,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"method": "POST",
-								"url": {
-									"value": "@concat(n  pipeline().globalParameters.eventLoggingHttpUrl,\n '/\\n  pipeline().parameters.env,\n  '/insert\\n')",
-									"type": "Expression"
-								},
-								"body": {
-									"value": "{\"insert\": \"@{pipeline().parameters.env}\",\"process_type\": \"INGESTION\",\"data_flow_id\": null,\"record_set_id\": null,\"event_type\": \"RDBMS RAW LAYER INGESTION\",\"event_tag_id\": \"@{variables(ingestionID)}\",\"unique_id\": \"@{pipeline().RunId}\",\"parent_unique_id\": \"@{variables(parentID)}\",\"event_value\": \"FAILED\",\"event_timestamp\": null,\"source_of_log\": \"ADF\",\"ddp_coordinate\": \"@{pipeline().parameters.entity_coordinate}\"}",
-									"type": "Expression"
-								}
-							}
-						}
-					]
-				},
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false,
-					"userProperties": []
-				}
-			},
-			{
-				"name": "Exit Until",
-				"description": "No unique ingestion. Exit the loop.",
-				"type": "SetVariable",
-				"dependsOn": [],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "ExitLoop",
-					"value": {
-						"value": "@bool(1)",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Increment Counter",
-				"description": "Increment index by 1. Two variables are used: X (the main counter) and Y (an index); once ADF doesn't support reassigning variables to themselves. N2. Initially, X = 0 and Y = 0.N    - Assign the value of Y to X (X = Y). N3. To update the main counter.",
-				"type": "IfCondition",
-				"dependsOn": [
-					{
-						"activity": "Count and Unique Fail Check",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"expression": {
-						"value": "@activity('Check Folder Path').output.exists",
-						"type": "Expression"
-					},
-					"ifTrueActivities": [
-						{
-							"name": "Increment Counter inner",
-							"description": "Increment index by 1",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "Count",
-								"value": {
-									"value": "@variables('Index')",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "Temporary Hold",
-							"description": "Pause the pipeline for X seconds to reduce possibility of duplicate ingestion ID from Ingestion Controller",
-							"type": "Wait",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"waitTimeInSeconds": {
-									"value": "@variables('WaitTime')",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "Validate Entity is Registered",
-							"description": "Check if entity co-ordinate is registered",
-							"type": "IfCondition",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"expression": {
-									"value": "@contains(activity('IngestionIdRegistry').output.response, 'Unable')",
-									"type": "Expression"
-								},
-								"ifTrueActivities": [
-									{
-										"name": "setEntityCoordinateNotExistError",
-										"description": "Set entity co-ordinate not registered error",
-										"type": "Fail",
-										"dependsOn": [],
-										"userProperties": [],
-										"typeProperties": {
-											"message": {
-												"value": "@{concat('\\n  The Entity Coordinate:\\n  pipeline().parameters.entity_coordinate,\\n  is not registered in @{pipeline().parameters.env} environment. Please register the entity coordinate in the IngestionIdRegistry with a valid start ingestion ID for :\\n  pipeline().parameters.env,\\n  environment.')}",
-												"type": "Expression"
-											},
-											"errorCode": "400"
-										}
-									}
-								]
-							},
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false,
-								"userProperties": []
-							}
-						},
-						{
-							"name": "Update Index",
-							"description": "Assign index of Index to Count variable",
+							"name": "setNoUniqueIdError",
 							"type": "SetVariable",
 							"dependsOn": [
 								{
-									"activity": "Increment Counter inner",
+									"activity": "OperEvent-RDBMSIngestion-FailedNoUniqueIngestionID",
 									"dependencyConditions": [
-										"Succeeded"
+										"Completed"
 									]
 								}
 							],
@@ -629,19 +534,163 @@
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"variableName": "Index",
-								"value": {
-									"value": "@add(variables('Index'), 1)",
-									"type": "Expression"
+								"variableName": "pipelineReturnValue",
+								"value": [
+									{
+										"key": "errorMsg",
+										"value": {
+											"type": "String",
+											"content": "No unique ingestion ID generated"
+										}
+									}
+								],
+								"setSystemVariable": true
+							}
+						},
+						{
+							"name": "Increment Counter If not Unique",
+							"description": "1. Two variables are used: X (the main counter) and Y (an index), since ADF doesn’t support reassigning variables to themselves.\n2. The logic works as follows:\n   - Initially, X = 0 and Y = 0.\n   - Increment Y by 1 (Y++).\n   - Assign the value of Y to X (X = Y) to update the main counter.\n\nAdditionally, if the folder path exists, the pipeline will pause for X seconds before retrying for a new ingestion ID. Each retry increments the count/index in this way.",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "Count and Unique Fail Check",
+									"dependencyConditions": [
+										"Succeeded"
+									]
 								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@activity('Check Folder Path').output.exists",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Increment Counter",
+										"description": "Increment Index by 1",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "Index",
+											"value": {
+												"value": "@add(variables('Count'), 1)",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Update Index",
+										"description": "Assign value of Index to Count variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Increment Counter",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "Count",
+											"value": {
+												"value": "@variables('Index')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Temporary Hold",
+										"description": "Pause the pipeline for X seconds to reduce possibility of duplicate ingestion ID from Ingestion Controller.",
+										"type": "Wait",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"waitTimeInSeconds": {
+												"value": "@variables('WaitTime')",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "Validate Entity is Registered",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "IngestionIdRegistry",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@contains(activity('IngestionIdRegistry').output.response, 'Unable')",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "Entity Coordinate is not registered",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "setEntityCoordinateNotExistError",
+												"dependencyConditions": [
+													"Completed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": {
+												"value": "@concat(\r\n  'The Entity Coordinate ',\r\n  pipeline().parameters.entity_coordinate,\r\n  ' is not registered in ',\r\n  pipeline().parameters.env,\r\n  ' environment. Please register the entity coordinate in the IngestionIDRegistry with a valid start ingestion ID for ',\r\n  pipeline().parameters.env,\r\n  ' environment.'\r\n)",
+												"type": "Expression"
+											},
+											"errorCode": "400"
+										}
+									},
+									{
+										"name": "setEntityCoordinateNotExistError",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "pipelineReturnValue",
+											"value": [
+												{
+													"key": "errorMsg",
+													"value": {
+														"type": "String",
+														"content": "Entity Coordinate not registrered"
+													}
+												}
+											],
+											"setSystemVariable": true
+										}
+									}
+								]
 							}
 						}
-					]
-				},
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false,
-					"userProperties": []
+					],
+					"timeout": "0.12:00:00"
 				}
 			},
 			{
@@ -658,7 +707,14 @@
 				"name": "setEmptyErrormsgs",
 				"description": "setemptyErrormsgs",
 				"type": "SetVariable",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "SetErrorMsgFromPreProcess",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureOutput": false,
 					"secureInput": false
@@ -667,7 +723,7 @@
 				"typeProperties": {
 					"variableName": "pipelineReturnValue",
 					"value": {
-						"value": "@if(contains(activity('RDBMS_Ingestion').output.pipelineReturnValue, 'errorMsg'), activity('RDBMS_Ingestion').output.pipelineReturnValue.errorMsg, 'No error message returned')",
+						"value": "@if(\n    contains(activity('RDBMS_Ingestion').output.pipelineReturnValue, 'errorMsg'),\n    activity('RDBMS_Ingestion').output.pipelineReturnValue.errorMsg,\n    'No error message returned'\n)",
 						"type": "Expression"
 					}
 				}
