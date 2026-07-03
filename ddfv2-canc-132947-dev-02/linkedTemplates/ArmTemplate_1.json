@@ -713,6 +713,308 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/RDBMS_Ingestion_Batch_Layer')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Find entity_coordinate based on the provided group_id ordered by the execution order in group.",
+				"activities": [
+					{
+						"name": "Query Ingestion Platform",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.01:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "select Platform, IIF(ISJSON(additional_info) = 1, COALESCE(JSON_QUERY(additional_info, '$.cluster_init_scripts'), '[]'), '[]') as cluster_init_scripts\nfrom ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}'\nunion select 'ADF' as platform, '[]' as cluster_init_scripts\nwhere not exists (select 1 from ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}')",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DS_EDGE_META_DATA_RW",
+								"type": "DatasetReference",
+								"parameters": {
+									"tablename": "tbl",
+									"env": {
+										"value": "@pipeline().parameters.env",
+										"type": "Expression"
+									},
+									"keyVault": {
+										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Platform",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Query Ingestion Platform",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "platform",
+							"value": {
+								"value": "@activity('Query Ingestion Platform').output.value[0].platform",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ClusterInitScripts",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Query Ingestion Platform",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "clusterInitScripts",
+							"value": {
+								"value": "@json(replace(activity('Query Ingestion Platform').output.value[0].cluster_init_scripts,'<env>',pipeline().parameters.env))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Platform Router",
+						"description": "Choose the option between ADF and Databricks to do the ingestion",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Platform",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "ClusterInitScripts",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(variables('platform'), 'DBR')",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "RDBMS_ADF_Ingestion",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "RDBMS_ADF_Ingestion",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"group_id": {
+												"value": "@pipeline().parameters.group_id",
+												"type": "Expression"
+											},
+											"env": {
+												"value": "@pipeline().parameters.env",
+												"type": "Expression"
+											},
+											"dupSkip": {
+												"value": "@pipeline().parameters.dupSkip",
+												"type": "Expression"
+											},
+											"debugMode": {
+												"value": "@pipeline().parameters.debugMode",
+												"type": "Expression"
+											},
+											"callBackUrl": {
+												"value": "@pipeline().parameters.callBackUrl",
+												"type": "Expression"
+											},
+											"callBackId": {
+												"value": "@pipeline().parameters.callBackId",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "RDBMS_DBR_Ingestion",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "RDBMS_DBR_Ingestion",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"group_id": {
+												"value": "@pipeline().parameters.group_id",
+												"type": "Expression"
+											},
+											"env": {
+												"value": "@pipeline().parameters.env",
+												"type": "Expression"
+											},
+											"dupSkip": {
+												"value": "@string(pipeline().parameters.dupSkip)",
+												"type": "Expression"
+											},
+											"debugMode": {
+												"value": "@string(pipeline().parameters.debugMode)",
+												"type": "Expression"
+											},
+											"callBackUrl": {
+												"value": "@pipeline().parameters.callBackUrl",
+												"type": "Expression"
+											},
+											"callBackId": {
+												"value": "@pipeline().parameters.callBackId",
+												"type": "Expression"
+											},
+											"clusterInitScripts": {
+												"value": "@pipeline().parameters.clusterInitScripts",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Execute Pipeline1",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Query Ingestion Platform",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "SendOrchFailedMsg",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"groupLvlFailure": true,
+								"callbackUrl": {
+									"value": "@pipeline().parameters.callBackUrl",
+									"type": "Expression"
+								},
+								"callbackId": {
+									"value": "@pipeline().parameters.callBackId",
+									"type": "Expression"
+								},
+								"bodyMsg": {
+									"value": "{\"status\":\"Failed\"}",
+									"type": "Expression"
+								},
+								"env": {
+									"value": "@pipeline().parameters.env",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"group_id": {
+						"type": "string"
+					},
+					"env": {
+						"type": "string",
+						"defaultValue": "dev"
+					},
+					"dupSkip": {
+						"type": "bool",
+						"defaultValue": true
+					},
+					"callBackUrl": {
+						"type": "string"
+					},
+					"callBackId": {
+						"type": "string"
+					},
+					"debugMode": {
+						"type": "bool"
+					},
+					"clusterInitScripts": {
+						"type": "Array"
+					}
+				},
+				"variables": {
+					"platform": {
+						"type": "String"
+					},
+					"clusterInitScripts": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "RDBMS_Ingestion"
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-06-24T20:05:21Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/RDBMS_ADF_Ingestion')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/RDBMS Ingestion Dispatcher')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -791,7 +1093,14 @@
 						"name": "Set ParentID",
 						"description": "Set the Pipeline RunID of the calling parent pipeline i.e RDBMS_Ingestion_Batch_Layer or set one if not provided. Used in the logger.",
 						"type": "SetVariable",
-						"dependsOn": [],
+						"dependsOn": [
+							{
+								"activity": "setEmptyErrormsgs",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
 						"policy": {
 							"secureOutput": false,
 							"secureInput": false
@@ -809,7 +1118,14 @@
 						"name": "Fail RDBMS Ingestion Pipeline",
 						"description": "Fail RDBMS Ingestion Pipeline for the target entity_coordinate",
 						"type": "Fail",
-						"dependsOn": [],
+						"dependsOn": [
+							{
+								"activity": "OpenEvent-RDBMSIngestion-Failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
 						"userProperties": [],
 						"typeProperties": {
 							"message": {
@@ -1427,7 +1743,14 @@
 						"name": "Dummy Wait",
 						"description": "To improve pipeline resilience, a dummy 'Wait' activity is selectively attached to logger activities that are at the end of an execution path (a 'dead-end'). If one of these terminal logging calls fails, the error is gracefully caught by the 'Wait' activity. This prevents the logging issue from marking the entire pipeline as 'Failed' while ensuring that no subsequent, dependent activities are skipped. The Wait time in seconds value should be either 0 or 1.",
 						"type": "Wait",
-						"dependsOn": [],
+						"dependsOn": [
+							{
+								"activity": "OpenEvent Log Failed lookup for the DDP co-ordinate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
 						"userProperties": [],
 						"typeProperties": {
 							"waitTimeInSeconds": 1
@@ -1437,14 +1760,7 @@
 						"name": "setEmptyErrormsgs",
 						"description": "setemptyErrormsgs",
 						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "SetErrorMsgFromPreProcess",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
+						"dependsOn": [],
 						"policy": {
 							"secureOutput": false,
 							"secureInput": false
@@ -1453,7 +1769,7 @@
 						"typeProperties": {
 							"variableName": "pipelineReturnValue",
 							"value": {
-								"value": "@if(\n    contains(activity('RDBMS_Ingestion').output.pipelineReturnValue, 'errorMsg'),\n    activity('RDBMS_Ingestion').output.pipelineReturnValue.errorMsg,\n    'No error message returned'\n)",
+								"value": "'No error message returned'",
 								"type": "Expression"
 							}
 						}
@@ -1562,308 +1878,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/DB2_Server')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/RDBMS_Ingestion_Batch_Layer')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Find entity_coordinate based on the provided group_id ordered by the execution order in group.",
-				"activities": [
-					{
-						"name": "Query Ingestion Platform",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.01:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": {
-									"value": "select Platform, IIF(ISJSON(additional_info) = 1, COALESCE(JSON_QUERY(additional_info, '$.cluster_init_scripts'), '[]'), '[]') as cluster_init_scripts\nfrom ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}'\nunion select 'ADF' as platform, '[]' as cluster_init_scripts\nwhere not exists (select 1 from ingest.rdbms_group_info where DDP_TABLE_GROUP_COORDINATE = '@{pipeline().parameters.group_id}')",
-									"type": "Expression"
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "DS_EDGE_META_DATA_RW",
-								"type": "DatasetReference",
-								"parameters": {
-									"tablename": "tbl",
-									"env": {
-										"value": "@pipeline().parameters.env",
-										"type": "Expression"
-									},
-									"keyVault": {
-										"value": "@pipeline().globalParameters.nodeLevelKeyVault",
-										"type": "Expression"
-									}
-								}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "Platform",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "Query Ingestion Platform",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "platform",
-							"value": {
-								"value": "@activity('Query Ingestion Platform').output.value[0].platform",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ClusterInitScripts",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "Query Ingestion Platform",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "clusterInitScripts",
-							"value": {
-								"value": "@json(replace(activity('Query Ingestion Platform').output.value[0].cluster_init_scripts,'<env>',pipeline().parameters.env))",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "Platform Router",
-						"description": "Choose the option between ADF and Databricks to do the ingestion",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Platform",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "ClusterInitScripts",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(variables('platform'), 'DBR')",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "RDBMS_ADF_Ingestion",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"policy": {
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "RDBMS_ADF_Ingestion",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"group_id": {
-												"value": "@pipeline().parameters.group_id",
-												"type": "Expression"
-											},
-											"env": {
-												"value": "@pipeline().parameters.env",
-												"type": "Expression"
-											},
-											"dupSkip": {
-												"value": "@pipeline().parameters.dupSkip",
-												"type": "Expression"
-											},
-											"debugMode": {
-												"value": "@pipeline().parameters.debugMode",
-												"type": "Expression"
-											},
-											"callBackUrl": {
-												"value": "@pipeline().parameters.callBackUrl",
-												"type": "Expression"
-											},
-											"callBackId": {
-												"value": "@pipeline().parameters.callBackId",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "RDBMS_DBR_Ingestion",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"policy": {
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "RDBMS_DBR_Ingestion",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"group_id": {
-												"value": "@pipeline().parameters.group_id",
-												"type": "Expression"
-											},
-											"env": {
-												"value": "@pipeline().parameters.env",
-												"type": "Expression"
-											},
-											"dupSkip": {
-												"value": "@string(pipeline().parameters.dupSkip)",
-												"type": "Expression"
-											},
-											"debugMode": {
-												"value": "@string(pipeline().parameters.debugMode)",
-												"type": "Expression"
-											},
-											"callBackUrl": {
-												"value": "@pipeline().parameters.callBackUrl",
-												"type": "Expression"
-											},
-											"callBackId": {
-												"value": "@pipeline().parameters.callBackId",
-												"type": "Expression"
-											},
-											"clusterInitScripts": {
-												"value": "@pipeline().parameters.clusterInitScripts",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							]
-						}
-					},
-					{
-						"name": "Execute Pipeline1",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Query Ingestion Platform",
-								"dependencyConditions": [
-									"Failed"
-								]
-							}
-						],
-						"policy": {
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "SendOrchFailedMsg",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {
-								"groupLvlFailure": true,
-								"callbackUrl": {
-									"value": "@pipeline().parameters.callBackUrl",
-									"type": "Expression"
-								},
-								"callbackId": {
-									"value": "@pipeline().parameters.callBackId",
-									"type": "Expression"
-								},
-								"bodyMsg": {
-									"value": "{\"status\":\"Failed\"}",
-									"type": "Expression"
-								},
-								"env": {
-									"value": "@pipeline().parameters.env",
-									"type": "Expression"
-								}
-							}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"parameters": {
-					"group_id": {
-						"type": "string"
-					},
-					"env": {
-						"type": "string",
-						"defaultValue": "dev"
-					},
-					"dupSkip": {
-						"type": "bool",
-						"defaultValue": true
-					},
-					"callBackUrl": {
-						"type": "string"
-					},
-					"callBackId": {
-						"type": "string"
-					},
-					"debugMode": {
-						"type": "bool"
-					},
-					"clusterInitScripts": {
-						"type": "Array"
-					}
-				},
-				"variables": {
-					"platform": {
-						"type": "String"
-					},
-					"clusterInitScripts": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "RDBMS_Ingestion"
-				},
-				"annotations": [],
-				"lastPublishTime": "2026-06-24T20:05:21Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/RDBMS_ADF_Ingestion')]"
 			]
 		}
 	]
