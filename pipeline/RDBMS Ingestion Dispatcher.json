@@ -73,7 +73,14 @@
 				"name": "Set ParentID",
 				"description": "Set the Pipeline RunID of the calling parent pipeline i.e RDBMS_Ingestion_Batch_Layer or set one if not provided. Used in the logger.",
 				"type": "SetVariable",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "setEmptyErrormsgs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureOutput": false,
 					"secureInput": false
@@ -91,7 +98,14 @@
 				"name": "Fail RDBMS Ingestion Pipeline",
 				"description": "Fail RDBMS Ingestion Pipeline for the target entity_coordinate",
 				"type": "Fail",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "OpenEvent-RDBMSIngestion-Failed",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"userProperties": [],
 				"typeProperties": {
 					"message": {
@@ -701,7 +715,14 @@
 				"name": "Dummy Wait",
 				"description": "To improve pipeline resilience, a dummy 'Wait' activity is selectively attached to logger activities that are at the end of an execution path (a 'dead-end'). If one of these terminal logging calls fails, the error is gracefully caught by the 'Wait' activity. This prevents the logging issue from marking the entire pipeline as 'Failed' while ensuring that no subsequent, dependent activities are skipped. The Wait time in seconds value should be either 0 or 1.",
 				"type": "Wait",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "OpenEvent Log Failed lookup for the DDP co-ordinate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"userProperties": [],
 				"typeProperties": {
 					"waitTimeInSeconds": 1
@@ -711,14 +732,7 @@
 				"name": "setEmptyErrormsgs",
 				"description": "setemptyErrormsgs",
 				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "SetErrorMsgFromPreProcess",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"secureOutput": false,
 					"secureInput": false
@@ -727,7 +741,7 @@
 				"typeProperties": {
 					"variableName": "pipelineReturnValue",
 					"value": {
-						"value": "@if(\n    contains(activity('RDBMS_Ingestion').output.pipelineReturnValue, 'errorMsg'),\n    activity('RDBMS_Ingestion').output.pipelineReturnValue.errorMsg,\n    'No error message returned'\n)",
+						"value": "'No error message returned'",
 						"type": "Expression"
 					}
 				}
